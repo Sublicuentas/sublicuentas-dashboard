@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ Sublicuentas Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════
+     VARIABLES & RESET
+  ═══════════════════════════════════════ */
+  :root {
+    --bg:        #080b14;
+    --bg2:       #0e1220;
+    --bg3:       #151929;
+    --border:    rgba(99,120,255,0.12);
+    --accent:    #5b7fff;
+    --accent2:   #8b5cf6;
+    --green:     #10d97e;
+    --red:       #ff4f6a;
+    --yellow:    #fbbf24;
+    --orange:    #f97316;
+    --text:      #eef0ff;
+    --muted:     #5a6080;
+    --card-glow: rgba(91,127,255,0.06);
+    --font:      'Outfit', sans-serif;
+    --mono:      'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    background-image: radial-gradient(ellipse at 20% 0%, rgba(91,127,255,0.06) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, rgba(139,92,246,0.04) 0%, transparent 60%);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ═══════════════════════════════════════
+     LOADER
+  ═══════════════════════════════════════ */
+  #loader {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.5s ease;
+  }
+  #loader.hidden { opacity: 0; pointer-events: none; }
+  .loader-logo {
+    font-size: 2rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 1.5rem;
+  }
+  .loader-bar {
+    width: 200px; height: 3px;
+    background: var(--bg3);
+    border-radius: 99px; overflow: hidden;
+  }
+  .loader-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 99px;
+    animation: loadAnim 1.8s ease-in-out infinite;
+  }
+  @keyframes loadAnim {
+    0%   { width: 0%; transform: translateX(0); }
+    50%  { width: 70%; }
+    100% { width: 100%; transform: translateX(100%); }
+  }
+  .loader-text { color: var(--muted); font-size: 0.8rem; margin-top: 1rem; font-family: var(--mono); }
+
+  /* ═══════════════════════════════════════
+     CONFIG OVERLAY
+  ═══════════════════════════════════════ */
+  #config-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 8888; padding: 1rem;
+  }
+  #config-overlay.hidden { display: none; }
+  .config-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 480px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .config-box h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem; }
+  .config-box p { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.6; }
+  .config-box label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.4rem; font-family: var(--mono); }
+  .config-box input {
+    width: 100%; padding: 0.7rem 1rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: var(--mono); font-size: 0.9rem;
+    margin-bottom: 1rem; outline: none;
+    transition: border-color 0.2s;
+  }
+  .config-box input:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%; padding: 0.8rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 8px;
+    color: #fff; font-family: var(--font);
+    font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .config-hint {
+    margin-top: 1rem; padding: 0.8rem;
+    background: rgba(79,110,247,0.1);
+    border-radius: 8px; border-left: 3px solid var(--accent);
+    font-size: 0.78rem; color: var(--muted); line-height: 1.6;
+    font-family: var(--mono);
+  }
+
+  /* ═══════════════════════════════════════
+     LAYOUT
+  ═══════════════════════════════════════ */
+  #app { display: none; }
+  #app.visible { display: block; }
+
+  .top-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,11,20,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 58px;
+    box-shadow: 0 1px 30px rgba(0,0,0,0.4);
+  }
+  .top-logo {
+    font-size: 1.15rem; font-weight: 800; letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #60a5fa, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .top-right { display: flex; align-items: center; gap: 1rem; }
+  .live-badge {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.75rem; color: var(--green);
+    font-family: var(--mono);
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.8); }
+  }
+  .last-update { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); }
+  .btn-refresh {
+    padding: 0.35rem 0.75rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text);
+    font-size: 0.78rem; cursor: pointer;
+    font-family: var(--font); font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-refresh:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-config {
+    padding: 0.35rem 0.75rem;
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--muted);
+    font-size: 0.78rem; cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.2s;
+  }
+  .btn-config:hover { border-color: var(--muted); color: var(--text); }
+
+  .container {
+    max-width: 1400px; margin: 0 auto;
+    padding: 1.5rem;
+  }
+
+  /* ═══════════════════════════════════════
+     SECTION TITLES
+  ═══════════════════════════════════════ */
+  .section-title {
+    font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 1rem; margin-top: 0.5rem;
+    display: flex; align-items: center; gap: 0.8rem;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ═══════════════════════════════════════
+     KPI CARDS
+  ═══════════════════════════════════════ */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .kpi-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.4rem 1.6rem;
+    position: relative; overflow: hidden;
+    transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(79,110,247,0.35);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: 0; transition: opacity 0.25s;
+  }
+  .kpi-card:hover::before { opacity: 1; }
+  .kpi-card::after {
+    content: '';
+    position: absolute; bottom: -20px; right: -20px;
+    width: 80px; height: 80px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(79,110,247,0.08), transparent 70%);
+    pointer-events: none;
+  }
+  .kpi-icon { font-size: 1.4rem; margin-bottom: 0.7rem; }
+  .kpi-value {
+    font-size: 2.1rem; font-weight: 900; line-height: 1;
+    margin-bottom: 0.3rem;
+    letter-spacing: -0.02em;
+  }
+  .kpi-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+  .kpi-sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; font-family: var(--mono); }
+  .kpi-card.green .kpi-value { color: var(--green); }
+  .kpi-card.red .kpi-value   { color: var(--red); }
+  .kpi-card.yellow .kpi-value{ color: var(--yellow); }
+  .kpi-card.blue .kpi-value  { color: var(--accent); }
+  .kpi-card.purple .kpi-value{ color: #a78bfa; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══════════════════════════════════════
+     GRID LAYOUTS
+  ═══════════════════════════════════════ */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+  .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1.5rem; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-1-2, .grid-2-1 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ═══════════════════════════════════════
+     CARDS
+  ═══════════════════════════════════════ */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.4rem;
+    animation: fadeUp 0.5s ease both;
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+  .card-title {
+    font-size: 0.88rem; font-weight: 700;
+    margin-bottom: 1.1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    color: var(--text);
+  }
+  .card-title span { color: var(--muted); font-size: 0.72rem; font-weight: 500; margin-left: auto;
+    background: var(--bg3); padding: 0.15rem 0.5rem; border-radius: 99px; border: 1px solid var(--border); }
+
+  /* ═══════════════════════════════════════
+     FINANZAS — BIG NUMBERS
+  ═══════════════════════════════════════ */
+  .fin-big {
+    display: flex; flex-direction: column;
+    align-items: flex-start; gap: 0.3rem;
+  }
+  .fin-big .fin-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .fin-big .fin-amount {
+    font-size: 2.4rem; font-weight: 800; line-height: 1;
+    font-family: var(--mono);
+  }
+  .fin-big .fin-amount.income { color: var(--green); }
+  .fin-big .fin-amount.expense { color: var(--red); }
+  .fin-big .fin-amount.balance { color: var(--accent); }
+  .fin-big .fin-sub { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); }
+
+  .fin-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 0; border-bottom: 1px solid var(--border);
+  }
+  .fin-row:last-child { border-bottom: none; }
+  .fin-row .fin-name { font-size: 0.82rem; }
+  .fin-row .fin-val { font-family: var(--mono); font-size: 0.82rem; font-weight: 600; }
+  .fin-row .fin-val.pos { color: var(--green); }
+  .fin-row .fin-val.neg { color: var(--red); }
+
+  /* ═══════════════════════════════════════
+     CHART BARS (CSS only)
+  ═══════════════════════════════════════ */
+  .chart-wrap { margin-top: 0.5rem; }
+    .chart-bars {
+    display: flex; align-items: flex-end;
+    gap: 6px; height: 160px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+  .chart-bar-group {
+    flex: 1; display: flex; gap: 3px;
+    align-items: flex-end; min-width: 0;
+  }
+  .chart-bar {
+    flex: 1; border-radius: 4px 4px 0 0;
+    min-height: 3px;
+    transition: height 1s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative; cursor: pointer;
+  }
+  .chart-bar.income {
+    background: linear-gradient(180deg, #22c55e, #16a34a);
+    opacity: 0.85;
+  }
+  .chart-bar.expense {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+    opacity: 0.8;
+  }
+  .chart-bar:hover { opacity: 1; filter: brightness(1.2); }
+  .chart-bar:hover::after {
+    content: attr(data-val);
+    position: absolute; bottom: 105%; left: 50%; transform: translateX(-50%);
+    background: var(--bg); border: 1px solid var(--accent);
+    padding: 3px 8px; border-radius: 6px;
+    font-size: 0.7rem; font-family: var(--mono); white-space: nowrap;
+    color: var(--text); pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 10;
+  }
+  .chart-labels {
+    display: flex; gap: 6px; margin-top: 6px;
+  }
+  .chart-label {
+    flex: 1; text-align: center; font-size: 0.62rem;
+    color: var(--muted); font-family: var(--mono);
+    overflow: hidden; white-space: pre-line; line-height: 1.3;
+  }
+  .chart-legend {
+    display: flex; gap: 1rem; margin-top: 0.7rem;
+  }
+  .chart-legend-item {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.72rem; color: var(--muted);
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* ═══════════════════════════════════════
+     INVENTORY BARS
+  ═══════════════════════════════════════ */
+  .inv-item { margin-bottom: 0.9rem; }
+  .inv-header {
+    display: flex; justify-content: space-between;
+    font-size: 0.78rem; margin-bottom: 0.3rem;
+  }
+  .inv-name { font-weight: 600; }
+  .inv-count { font-family: var(--mono); color: var(--muted); }
+  .inv-bar-bg {
+    height: 6px; background: var(--bg3);
+    border-radius: 99px; overflow: hidden;
+  }
+  .inv-bar-fill {
+    height: 100%; border-radius: 99px;
+    transition: width 1s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .inv-bar-fill.full   { background: var(--red); }
+  .inv-bar-fill.mid    { background: var(--yellow); }
+  .inv-bar-fill.ok     { background: var(--green); }
+  .inv-bar-fill.accent { background: var(--accent); }
+
+  /* ═══════════════════════════════════════
+     TABLES
+  ═══════════════════════════════════════ */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th {
+    text-align: left; padding: 0.55rem 0.9rem;
+    font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 700;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  th:first-child { border-radius: 6px 0 0 0; }
+  th:last-child  { border-radius: 0 6px 0 0; }
+  td { padding: 0.6rem 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 0.18rem 0.55rem; border-radius: 99px;
+    font-size: 0.67rem; font-weight: 700;
+    font-family: var(--mono); letter-spacing: 0.03em;
+  }
+  .badge.red    { background: rgba(239,68,68,0.15);   color: var(--red); }
+  .badge.green  { background: rgba(34,197,94,0.15);   color: var(--green); }
+  .badge.yellow { background: rgba(245,158,11,0.15);  color: var(--yellow); }
+  .badge.blue   { background: rgba(79,110,247,0.15);  color: var(--accent); }
+  .badge.purple { background: rgba(124,58,237,0.15);  color: #a78bfa; }
+
+  /* ═══════════════════════════════════════
+     VENDOR CARDS
+  ═══════════════════════════════════════ */
+  .vendor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.8rem;
+  }
+  .vendor-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.1rem;
+    transition: all 0.2s;
+  }
+  .vendor-card:hover {
+    border-color: rgba(79,110,247,0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  }
+  .vendor-name { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.7rem; }
+  .vendor-stat { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.3rem; }
+  .vendor-stat .vs-label { color: var(--muted); }
+  .vendor-stat .vs-val { font-family: var(--mono); font-weight: 600; }
+
+  /* ═══════════════════════════════════════
+     EMPTY STATE
+  ═══════════════════════════════════════ */
+  .empty { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; }
+
+  /* ═══════════════════════════════════════
+     ERROR / SKELETON
+  ═══════════════════════════════════════ */
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg3) 25%, var(--bg2) 50%, var(--bg3) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ═══════════════════════════════════════
+     FOOTER
+  ═══════════════════════════════════════ */
+  .footer {
+    text-align: center; padding: 2rem;
+    color: var(--muted); font-size: 0.72rem;
+    font-family: var(--mono); border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+
+  /* ═══════════════════════════════════════
+     MOBILE TWEAKS
+  ═══════════════════════════════════════ */
+  @media (max-width: 600px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .top-bar { padding: 0 1rem; }
+    .container { padding: 1rem; }
+    .last-update { display: none; }
+    .fin-big .fin-amount { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-logo">SUBLICUENTAS</div>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+  <div class="loader-text">Cargando datos...</div>
+</div>
+
+<!-- CONFIG OVERLAY -->
+<div id="config-overlay">
+  <div class="config-box">
+    <h2>⚙️ Configurar Firebase</h2>
+    <p>Para conectar el dashboard a tu base de datos, necesitas el <strong>Project ID</strong> de tu Firebase. Solo lo configuras una vez.</p>
+    <label>PROJECT ID de Firebase</label>
+    <input type="text" id="projectId-input" placeholder="mi-proyecto-12345" />
+    <div class="config-hint">
+      📍 Lo encuentras en:<br>
+      Firebase Console → Configuración del proyecto → ID del proyecto<br><br>
+      Ejemplo: <strong>sublicuentas-bot-abc12</strong>
+    </div>
+    <br>
+    <button class="btn-primary" onclick="saveConfig()">Conectar Dashboard</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="top-bar">
+    <div class="top-logo">⚡ SUBLICUENTAS</div>
+    <div class="top-right">
+      <div class="live-badge"><div class="live-dot"></div>EN VIVO</div>
+      <div class="last-update" id="last-update">—</div>
+      <button class="btn-refresh" onclick="loadAll()">↻ Actualizar</button>
+      <button class="btn-config" onclick="showConfig()">⚙</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- KPIs -->
+    <div class="section-title">Resumen General</div>
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-icon">👥</div>
+        <div class="kpi-value" id="kpi-clientes">—</div>
+        <div class="kpi-label">Clientes totales</div>
+        <div class="kpi-sub" id="kpi-clientes-activos">— activos</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-icon">🔴</div>
+        <div class="kpi-value" id="kpi-vencidos">—</div>
+        <div class="kpi-label">Vencidos</div>
+        <div class="kpi-sub">servicios sin renovar</div>
+      </div>
+      <div class="kpi-card yellow">
+        <div class="kpi-icon">🟡</div>
+        <div class="kpi-value" id="kpi-hoy">—</div>
+        <div class="kpi-label">Vencen hoy</div>
+        <div class="kpi-sub" id="kpi-3dias">— en 3 días</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-icon">💰</div>
+        <div class="kpi-value" id="kpi-ingresos-mes">—</div>
+        <div class="kpi-label">Ingresos este mes</div>
+        <div class="kpi-sub" id="kpi-ingresos-sub">en Lps</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-icon">📉</div>
+        <div class="kpi-value" id="kpi-egresos-mes">—</div>
+        <div class="kpi-label">Egresos este mes</div>
+        <div class="kpi-sub">en Lps</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-icon">📦</div>
+        <div class="kpi-value" id="kpi-inventario">—</div>
+        <div class="kpi-label">Cuentas inventario</div>
+        <div class="kpi-sub" id="kpi-inv-disp">— disponibles</div>
+      </div>
+    </div>
+
+    <!-- FINANZAS -->
+    <div class="section-title">💰 Finanzas</div>
+    <div class="grid-3">
+      <!-- Balance del mes -->
+      <div class="card">
+        <div class="card-title">Balance del mes <span id="mes-actual">—</span></div>
+        <div style="display:flex; flex-direction:column; gap:1.2rem;">
+          <div class="fin-big">
+            <div class="fin-label">Ingresos</div>
+            <div class="fin-amount income" id="fin-ingresos">L. 0</div>
+            <div class="fin-sub" id="fin-ingresos-count">0 movimientos</div>
+          </div>
+          <div class="fin-big">
+            <div class="fin-label">Egresos</div>
+            <div class="fin-amount expense" id="fin-egresos">L. 0</div>
+            <div class="fin-sub" id="fin-egresos-count">0 movimientos</div>
+          </div>
+          <div class="fin-big" style="padding-top:0.8rem; border-top:1px solid var(--border)">
+            <div class="fin-label">Balance neto</div>
+            <div class="fin-amount balance" id="fin-balance">L. 0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico mensual -->
+      <div class="card" style="grid-column: span 2;">
+        <div class="card-title">Ingresos vs Egresos — últimos 6 meses</div>
+        <div class="chart-wrap">
+          <div class="chart-bars" id="chart-bars">
+            <div class="empty skeleton" style="height:80px; width:100%;"></div>
+          </div>
+          <div class="chart-labels" id="chart-labels"></div>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><div class="legend-dot" style="background:var(--green)"></div>Ingresos</div>
+            <div class="chart-legend-item"><div class="legend-dot" style="background:var(--red)"></div>Egresos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BANCOS + TOP PLATAFORMAS -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏦 Bancos este mes</div>
+        <div id="bancos-list"><div class="empty">Cargando...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📦 Top plataformas vendidas</div>
+        <div id="plataformas-list"><div class="empty">Cargando...</div></div>
+      </div>
+    </div>
+
+    <!-- ÚLTIMOS MOVIMIENTOS -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-title">📋 Últimos movimientos <span id="movs-count">—</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Fecha</th>
+              <th>Monto</th>
+              <th>Banco</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="movimientos-tbody">
+            <tr><td colspan="5" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RENOVACIONES -->
+    <div class="section-title">🔄 Renovaciones</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📅 Vencen HOY <span id="ren-hoy-count">—</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Plataforma</th><th>Vendedor</th><th>Monto</th></tr></thead>
+            <tbody id="ren-hoy-tbody"><tr><td colspan="4" class="empty">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⏳ Vencidos <span id="vencidos-count">—</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Plataforma</th><th>Atraso</th><th>Vendedor</th></tr></thead>
+            <tbody id="vencidos-tbody"><tr><td colspan="4" class="empty">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div class="section-title">📦 Inventario</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Stock por plataforma</div>
+        <div id="inv-bars"><div class="empty">Cargando...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Cuentas críticas (llenas o sobreocupadas)</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Plataforma</th><th>Cuenta</th><th>Estado</th></tr></thead>
+            <tbody id="inv-critico-tbody"><tr><td colspan="3" class="empty">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VENDEDORES -->
+    <div class="section-title">👤 Revendedores</div>
+    <div class="vendor-grid" id="vendor-grid">
+      <div class="empty">Cargando...</div>
+    </div>
+
+    <br>
+
+    <!-- TODOS LOS CLIENTES (tabla compacta) -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-title">👥 Todos los clientes <span id="all-clients-count">—</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Teléfono</th>
+              <th>Vendedor</th>
+              <th>Servicios</th>
+              <th>Total/mes</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="all-clients-tbody">
+            <tr><td colspan="6" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+
+  <div class="footer">
+    SUBLICUENTAS DASHBOARD • Auto-actualización cada 5 min
+    • <span id="footer-project">—</span>
+  </div>
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════
+const LS_KEY = 'sublicuentas_projectId';
+let PROJECT_ID = localStorage.getItem(LS_KEY) || '';
+
+function saveConfig() {
+  const val = document.getElementById('projectId-input').value.trim();
+  if (!val) return alert('Ingresa el Project ID');
+  PROJECT_ID = val;
+  localStorage.setItem(LS_KEY, val);
+  document.getElementById('config-overlay').classList.add('hidden');
+  document.getElementById('footer-project').textContent = val;
+  initApp();
+}
+
+function showConfig() {
+  document.getElementById('projectId-input').value = PROJECT_ID;
+  document.getElementById('config-overlay').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════
+// FIRESTORE REST API
+// ═══════════════════════════════════════════════════════
+async function fsGet(collection, limit = 2000) {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collection}?pageSize=${limit}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Error ${res.status} en ${collection}`);
+  const data = await res.json();
+  return (data.documents || []).map(parseDoc);
+}
+
+function parseDoc(doc) {
+  const id = doc.name.split('/').pop();
+  return { id, ...parseFields(doc.fields || {}) };
+}
+
+function parseFields(fields) {
+  const out = {};
+  for (const [k, v] of Object.entries(fields)) {
+    out[k] = parseValue(v);
+  }
+  return out;
+}
+
+function parseValue(v) {
+  if (v.stringValue  !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue  !== undefined) return Number(v.doubleValue);
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.timestampValue !== undefined) return v.timestampValue;
+  if (v.nullValue    !== undefined) return null;
+  if (v.arrayValue   !== undefined) return (v.arrayValue.values || []).map(parseValue);
+  if (v.mapValue     !== undefined) return parseFields(v.mapValue.fields || {});
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function hoyDMY() {
+  const d = new Date();
+  const tz = new Intl.DateTimeFormat('es-HN', {
+    timeZone: 'America/Tegucigalpa',
+    day:'2-digit', month:'2-digit', year:'numeric'
+  }).formatToParts(d);
+  const p = {};
+  tz.forEach(x => p[x.type] = x.value);
+  return `${p.day}/${p.month}/${p.year}`;
+}
+
+function mesActualKey() {
+  const d = new Date();
+  const tz = new Intl.DateTimeFormat('es-HN', {
+    timeZone: 'America/Tegucigalpa',
+    month:'2-digit', year:'numeric'
+  }).formatToParts(d);
+  const p = {};
+  tz.forEach(x => p[x.type] = x.value);
+  // ✅ Siempre con cero: "04/2026" nunca "4/2026"
+  return `${String(p.month).padStart(2,'0')}/${p.year}`;
+}
+
+// Normaliza CUALQUIER formato de mesKey a "MM/YYYY"
+function normalizeMesKey(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (/^\d{2}\/\d{4}$/.test(s)) return s;                        // "04/2026" ✓
+  const m1 = s.match(/^(\d{4})[-\/](\d{2})$/);
+  if (m1) return `${m1[2]}/${m1[1]}`;                              // "2026-04" o "2026/04"
+  const m2 = s.match(/^(\d{2})[-](\d{4})$/);
+  if (m2) return `${m2[1]}/${m2[2]}`;                              // "04-2026"
+  const m3 = s.match(/^(\d{1,2})\/(\d{4})$/);
+  if (m3) return `${m3[1].padStart(2,'0')}/${m3[2]}`;             // "4/2026"
+  const m4 = s.match(/^(\d{4})(\d{2})$/);
+  if (m4) return `${m4[2]}/${m4[1]}`;                              // "202604"
+  return s;
+}
+
+// Obtiene el mesKey de un movimiento aunque no tenga el campo
+// Fallback: inferir desde campo 'fecha' (dd/mm/yyyy)
+function getMesKey(mov) {
+  const raw = String(mov.mesKey || mov.mes || mov.month || '').trim();
+  if (raw) {
+    const nk = normalizeMesKey(raw);
+    if (nk) return nk;
+  }
+  // Inferir desde fecha
+  const fecha = String(mov.fecha || '').trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
+    const [dd, mm, yyyy] = fecha.split('/');
+    return `${mm}/${yyyy}`;
+  }
+  return '';
+}
+
+// Convierte "MM/YYYY" a timestamp para ordenar
+function mesKeyToTs(mk) {
+  const [mm, yyyy] = mk.split('/');
+  return new Date(parseInt(yyyy), parseInt(mm)-1, 1).getTime();
+}
+
+function addDaysDMY(dmy, days) {
+  const [dd, mm, yyyy] = dmy.split('/').map(Number);
+  const dt = new Date(Date.UTC(yyyy, mm-1, dd, 12));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return `${String(dt.getUTCDate()).padStart(2,'0')}/${String(dt.getUTCMonth()+1).padStart(2,'0')}/${dt.getUTCFullYear()}`;
+}
+
+function dmyToTs(dmy) {
+  if (!dmy || !/^\d{2}\/\d{2}\/\d{4}$/.test(dmy)) return 0;
+  const [dd, mm, yyyy] = dmy.split('/').map(Number);
+  return new Date(Date.UTC(yyyy, mm-1, dd, 12)).getTime();
+}
+
+function fmtLps(n) {
+  return 'L. ' + Number(n||0).toLocaleString('es-HN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function platIcon(p = '') {
+  const m = {
+    netflix:'📺', vipnetflix:'🔥', disneyp:'🏰', disneys:'🎬',
+    hbomax:'🎥', primevideo:'🎦', paramount:'💿', crunchyroll:'🍥',
+    spotify:'🎵', youtube:'▶️', deezer:'🎧', canva:'🎨',
+    gemini:'✨', chatgpt:'🤖', iptv1:'📡', iptv3:'📡', iptv4:'📡',
+    oleadatv1:'🌊', oleadatv3:'🌊'
+  };
+  return m[p.toLowerCase().replace(/\s/,'')] || '📦';
+}
+
+function platName(p = '') {
+  const m = {
+    netflix:'Netflix', vipnetflix:'VIP Netflix', disneyp:'Disney Premium',
+    disneys:'Disney Standard', hbomax:'HBO Max', primevideo:'Prime Video',
+    paramount:'Paramount+', crunchyroll:'Crunchyroll', spotify:'Spotify',
+    youtube:'YouTube', deezer:'Deezer', canva:'Canva', gemini:'Gemini',
+    chatgpt:'ChatGPT', iptv1:'IPTV 1', iptv3:'IPTV 3', iptv4:'IPTV 4',
+    oleadatv1:'Oleada TV 1', oleadatv3:'Oleada TV 3'
+  };
+  return m[p.toLowerCase().replace(/\s/,'')] || p;
+}
+
+function mesNombre(key) {
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const nk = normalizeMesKey(key);
+  const [mm, yyyy] = nk.split('/');
+  const nombre = meses[(parseInt(mm)-1)] || mm;
+  return nombre;
+}
+
+// ═══════════════════════════════════════════════════════
+// LOAD ALL DATA
+// ═══════════════════════════════════════════════════════
+async function loadAll() {
+  document.getElementById('last-update').textContent = 'Actualizando...';
+  try {
+    const [clientes, inventario, finanzas, revendedores] = await Promise.all([
+      fsGet('clientes'),
+      fsGet('inventario'),
+      fsGet('finanzas_movimientos'),
+      fsGet('revendedores'),
+    ]);
+
+    renderKPIs(clientes, inventario, finanzas);
+    renderFinanzas(finanzas);
+    renderRenovaciones(clientes);
+    renderInventario(inventario);
+    renderVendedores(clientes, revendedores);
+    renderAllClients(clientes);
+
+    const now = new Date().toLocaleTimeString('es-HN', { hour:'2-digit', minute:'2-digit' });
+    document.getElementById('last-update').textContent = `Actualizado ${now}`;
+  } catch (e) {
+    document.getElementById('last-update').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// KPIs
+// ═══════════════════════════════════════════════════════
+function renderKPIs(clientes, inventario, finanzas) {
+  const hoy = hoyDMY();
+  const hoyTs = dmyToTs(hoy);
+  const fecha3 = addDaysDMY(hoy, 3);
+  const mesKey = mesActualKey();
+
+  // Clientes
+  let totalServicios = 0, vencidosCount = 0, hoyCount = 0, dias3Count = 0, activos = 0;
+  clientes.forEach(c => {
+    const servicios = Array.isArray(c.servicios) ? c.servicios : [];
+    if (servicios.length) activos++;
+    servicios.forEach(s => {
+      totalServicios++;
+      const f = String(s.fechaRenovacion || '');
+      const fts = dmyToTs(f);
+      if (fts && fts < hoyTs) vencidosCount++;
+      if (f === hoy) hoyCount++;
+      if (f === fecha3) dias3Count++;
+    });
+  });
+
+  document.getElementById('kpi-clientes').textContent = clientes.length;
+  document.getElementById('kpi-clientes-activos').textContent = `${activos} con servicios`;
+  document.getElementById('kpi-vencidos').textContent = vencidosCount;
+  document.getElementById('kpi-hoy').textContent = hoyCount;
+  document.getElementById('kpi-3dias').textContent = `${dias3Count} en 3 días`;
+
+  // Finanzas mes
+  let ingMes = 0, egrMes = 0;
+  finanzas.forEach(m => {
+    const mk = getMesKey(m);
+    if (mk !== mesKey) return;
+    const monto = Number(m.monto || 0);
+    if (String(m.tipo||'').toLowerCase() === 'ingreso') ingMes += monto;
+    else egrMes += monto;
+  });
+  document.getElementById('kpi-ingresos-mes').textContent = `L.${Math.round(ingMes).toLocaleString()}`;
+  document.getElementById('kpi-egresos-mes').textContent = `L.${Math.round(egrMes).toLocaleString()}`;
+
+  // Inventario
+  let totalCuentas = inventario.length;
+  let disponibles = 0;
+  inventario.forEach(inv => {
+    const cap = Number(inv.capacidad || inv.total || 1);
+    const ocp = Number(inv.ocupados || (Array.isArray(inv.clientes) ? inv.clientes.length : 0));
+    disponibles += Math.max(0, cap - ocp);
+  });
+  document.getElementById('kpi-inventario').textContent = totalCuentas;
+  document.getElementById('kpi-inv-disp').textContent = `${disponibles} espacios libres`;
+}
+
+// ═══════════════════════════════════════════════════════
+// FINANZAS
+// ═══════════════════════════════════════════════════════
+function renderFinanzas(finanzas) {
+  const mesKey = mesActualKey();
+
+  // Nombre del mes
+  document.getElementById('mes-actual').textContent = mesKey;
+
+  // Agrupar por mes — últimos 6 meses
+  const mesMap = {};
+  // ✅ Siempre incluir el mes actual aunque no tenga movimientos
+  mesMap[mesKey] = { ing: 0, egr: 0, movs: [] };
+  finanzas.forEach(m => {
+    const mk = getMesKey(m);
+    if (!mk) return;
+    if (!mesMap[mk]) mesMap[mk] = { ing: 0, egr: 0, movs: [] };
+    const monto = Number(m.monto || 0);
+    if (String(m.tipo||'').toLowerCase() === 'ingreso') mesMap[mk].ing += monto;
+    else mesMap[mk].egr += monto;
+    mesMap[mk].movs.push(m);
+  });
+
+  // Mes actual
+  const mesActual = mesMap[mesKey] || { ing: 0, egr: 0, movs: [] };
+  const ingTotal = mesActual.ing;
+  const egrTotal = mesActual.egr;
+  const balance = ingTotal - egrTotal;
+  const movsDelMes = mesActual.movs;
+
+  document.getElementById('fin-ingresos').textContent = fmtLps(ingTotal);
+  document.getElementById('fin-egresos').textContent = fmtLps(egrTotal);
+  document.getElementById('fin-balance').textContent = fmtLps(balance);
+  const ingMovs = movsDelMes.filter(m => String(m.tipo||'').toLowerCase()==='ingreso');
+  const egrMovs = movsDelMes.filter(m => String(m.tipo||'').toLowerCase()!=='ingreso');
+  document.getElementById('fin-ingresos-count').textContent = `${ingMovs.length} movimientos`;
+  document.getElementById('fin-egresos-count').textContent = `${egrMovs.length} movimientos`;
+
+  // Balance color
+  const balEl = document.getElementById('fin-balance');
+  balEl.style.color = balance >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // Gráfico — últimos 6 meses
+  const claves = Object.keys(mesMap)
+    .sort((a,b) => mesKeyToTs(a) - mesKeyToTs(b))
+    .slice(-6);
+
+  const maxVal = Math.max(...claves.flatMap(k => [mesMap[k].ing, mesMap[k].egr]), 1);
+  const barsEl = document.getElementById('chart-bars');
+  const labsEl = document.getElementById('chart-labels');
+  barsEl.innerHTML = '';
+  labsEl.innerHTML = '';
+
+  claves.forEach(k => {
+    const d = mesMap[k];
+    const ingH = Math.max(3, (d.ing / maxVal) * 130);
+    const egrH = Math.max(3, (d.egr / maxVal) * 130);
+    barsEl.innerHTML += `
+      <div class="chart-bar-group">
+        <div class="chart-bar income" style="height:${ingH}px" data-val="${fmtLps(d.ing)}"></div>
+        <div class="chart-bar expense" style="height:${egrH}px" data-val="${fmtLps(d.egr)}"></div>
+      </div>`;
+    labsEl.innerHTML += `<div class="chart-label">${mesNombre(k)}</div>`;
+  });
+
+  // Bancos
+  const bancoMap = {};
+  movsDelMes.forEach(m => {
+    const b = String(m.banco || 'Sin banco').trim();
+    if (!bancoMap[b]) bancoMap[b] = { ing: 0, egr: 0 };
+    if (String(m.tipo||'').toLowerCase()==='ingreso') bancoMap[b].ing += Number(m.monto||0);
+    else bancoMap[b].egr += Number(m.monto||0);
+  });
+  const bancosEl = document.getElementById('bancos-list');
+  if (!Object.keys(bancoMap).length) {
+    bancosEl.innerHTML = '<div class="empty" style="padding:1.5rem">📭 Sin movimientos registrados en ' + mesKey + '<br><small style="font-size:0.7rem;opacity:0.6">Verifica que los movimientos tengan fecha de abril</small></div>';
+  } else {
+    bancosEl.innerHTML = Object.entries(bancoMap)
+      .sort((a,b) => (b[1].ing - b[1].egr) - (a[1].ing - a[1].egr))
+      .map(([b, v]) => `
+        <div class="fin-row">
+          <div class="fin-name">🏦 ${b}</div>
+          <div style="display:flex;gap:0.7rem;align-items:center">
+            <span style="font-size:0.7rem;color:var(--green);font-family:var(--mono)">+${fmtLps(v.ing)}</span>
+            <span style="font-size:0.7rem;color:var(--red);font-family:var(--mono)">-${fmtLps(v.egr)}</span>
+          </div>
+        </div>`).join('');
+  }
+
+  // Top plataformas (del mes)
+  const platMap = {};
+  movsDelMes.filter(m => String(m.tipo||'').toLowerCase()==='ingreso').forEach(m => {
+    const plats = String(m.plataforma || m.descripcion || 'Otros').split(/[\n,\/]+/);
+    plats.forEach(p => {
+      const pn = p.trim() || 'Otros';
+      platMap[pn] = (platMap[pn] || 0) + Number(m.monto || 0);
+    });
+  });
+  const platEl = document.getElementById('plataformas-list');
+  const platEntries = Object.entries(platMap).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  if (!platEntries.length) {
+    platEl.innerHTML = '<div class="empty">Sin datos</div>';
+  } else {
+    const maxPlat = platEntries[0][1];
+    platEl.innerHTML = platEntries.map(([p, v]) => {
+      const pct = Math.max(3, (v/maxPlat)*100);
+      return `
+        <div class="inv-item">
+          <div class="inv-header">
+            <span class="inv-name">${p}</span>
+            <span class="inv-count">${fmtLps(v)}</span>
+          </div>
+          <div class="inv-bar-bg"><div class="inv-bar-fill accent" style="width:${pct}%"></div></div>
+        </div>`;
+    }).join('');
+  }
+
+  // Últimos 30 movimientos
+  const todos = [...finanzas].sort((a,b) => {
+    const da = dmyToTs(String(a.fecha||''));
+    const db2 = dmyToTs(String(b.fecha||''));
+    return db2 - da;
+  }).slice(0, 30);
+
+  document.getElementById('movs-count').textContent = `${todos.length} recientes`;
+  const tbody = document.getElementById('movimientos-tbody');
+  if (!todos.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin movimientos</td></tr>';
+  } else {
+    tbody.innerHTML = todos.map(m => {
+      const tipo = String(m.tipo||'').toLowerCase();
+      const esIng = tipo === 'ingreso';
+      const badge = esIng
+        ? '<span class="badge green">INGRESO</span>'
+        : '<span class="badge red">EGRESO</span>';
+      const monto = esIng
+        ? `<span style="color:var(--green);font-family:var(--mono)">+${fmtLps(m.monto)}</span>`
+        : `<span style="color:var(--red);font-family:var(--mono)">-${fmtLps(m.monto)}</span>`;
+      const detalle = esIng
+        ? (String(m.plataforma||m.descripcion||'-'))
+        : (String(m.motivo||m.descripcion||'-'));
+      return `<tr>
+        <td>${badge}</td>
+        <td><span style="font-family:var(--mono);font-size:0.75rem">${m.fecha||'-'}</span></td>
+        <td>${monto}</td>
+        <td>${String(m.banco||'-')}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${detalle}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// RENOVACIONES
+// ═══════════════════════════════════════════════════════
+function renderRenovaciones(clientes) {
+  const hoy = hoyDMY();
+  const hoyTs = dmyToTs(hoy);
+  const hoyRows = [], vencRows = [];
+
+  clientes.forEach(c => {
+    const servicios = Array.isArray(c.servicios) ? c.servicios : [];
+    servicios.forEach(s => {
+      const f = String(s.fechaRenovacion||'');
+      const fts = dmyToTs(f);
+      const row = {
+        nombre: c.nombrePerfil || 'Sin nombre',
+        vendedor: c.vendedor || '-',
+        plataforma: s.plataforma || '',
+        precio: Number(s.precio||0),
+        fecha: f,
+        atraso: fts && fts < hoyTs ? Math.floor((hoyTs - fts)/86400000) : 0,
+      };
+      if (f === hoy) hoyRows.push(row);
+      if (fts && fts < hoyTs) vencRows.push(row);
+    });
+  });
+
+  // Vencen hoy
+  document.getElementById('ren-hoy-count').textContent = hoyRows.length;
+  const hoyTbody = document.getElementById('ren-hoy-tbody');
+  if (!hoyRows.length) {
+    hoyTbody.innerHTML = '<tr><td colspan="4" class="empty">Sin renovaciones para hoy 🎉</td></tr>';
+  } else {
+    hoyTbody.innerHTML = hoyRows.map(r => `
+      <tr>
+        <td>${r.nombre}</td>
+        <td>${platIcon(r.plataforma)} ${platName(r.plataforma)}</td>
+        <td><span class="badge blue">${r.vendedor}</span></td>
+        <td><span style="font-family:var(--mono)">${fmtLps(r.precio)}</span></td>
+      </tr>`).join('');
+  }
+
+  // Vencidos
+  document.getElementById('vencidos-count').textContent = vencRows.length;
+  const vencTbody = document.getElementById('vencidos-tbody');
+  if (!vencRows.length) {
+    vencTbody.innerHTML = '<tr><td colspan="4" class="empty">Sin clientes vencidos ✅</td></tr>';
+  } else {
+    vencRows.sort((a,b)=>b.atraso-a.atraso).slice(0,40).forEach(r => {
+      vencTbody.innerHTML += `
+        <tr>
+          <td>${r.nombre}</td>
+          <td>${platIcon(r.plataforma)} ${platName(r.plataforma)}</td>
+          <td><span class="badge red">${r.atraso}d</span></td>
+          <td><span class="badge blue">${r.vendedor}</span></td>
+        </tr>`;
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// INVENTARIO
+// ═══════════════════════════════════════════════════════
+function renderInventario(inventario) {
+  // Agrupar por plataforma
+  const platMap = {};
+  inventario.forEach(inv => {
+    const plat = String(inv.plataforma||'').toLowerCase();
+    if (!plat) return;
+    if (!platMap[plat]) platMap[plat] = { cap: 0, ocp: 0, cuentas: 0 };
+    platMap[plat].cuentas++;
+    platMap[plat].cap += Number(inv.capacidad||inv.total||1);
+    platMap[plat].ocp += Number(inv.ocupados || (Array.isArray(inv.clientes)?inv.clientes.length:0));
+  });
+
+  const invBarsEl = document.getElementById('inv-bars');
+  const entries = Object.entries(platMap).sort((a,b)=>b[1].ocp-a[1].ocp);
+  if (!entries.length) {
+    invBarsEl.innerHTML = '<div class="empty">Sin inventario</div>';
+  } else {
+    invBarsEl.innerHTML = entries.map(([plat, d]) => {
+      const pct = d.cap > 0 ? Math.round((d.ocp/d.cap)*100) : 0;
+      const cls = pct >= 90 ? 'full' : pct >= 60 ? 'mid' : 'ok';
+      return `
+        <div class="inv-item">
+          <div class="inv-header">
+            <span class="inv-name">${platIcon(plat)} ${platName(plat)}</span>
+            <span class="inv-count">${d.ocp}/${d.cap} (${pct}%)</span>
+          </div>
+          <div class="inv-bar-bg"><div class="inv-bar-fill ${cls}" style="width:${pct}%"></div></div>
+        </div>`;
+    }).join('');
+  }
+
+  // Críticas
+  const criticos = inventario.filter(inv => {
+    const cap = Number(inv.capacidad||inv.total||1);
+    const ocp = Number(inv.ocupados||(Array.isArray(inv.clientes)?inv.clientes.length:0));
+    return ocp >= cap;
+  });
+  const crtbody = document.getElementById('inv-critico-tbody');
+  if (!criticos.length) {
+    crtbody.innerHTML = '<tr><td colspan="3" class="empty">Sin cuentas críticas ✅</td></tr>';
+  } else {
+    crtbody.innerHTML = criticos.slice(0,20).map(inv => {
+      const plat = String(inv.plataforma||'');
+      const acceso = String(inv.correo||inv.usuario||'-');
+      const cap = Number(inv.capacidad||inv.total||1);
+      const ocp = Number(inv.ocupados||(Array.isArray(inv.clientes)?inv.clientes.length:0));
+      const sobreocupada = ocp > cap;
+      return `<tr>
+        <td>${platIcon(plat)} ${platName(plat)}</td>
+        <td style="font-family:var(--mono);font-size:0.75rem">${acceso.length>30?acceso.slice(0,30)+'…':acceso}</td>
+        <td><span class="badge ${sobreocupada?'red':'yellow'}">${sobreocupada?'SOBRE':'LLENA'} ${ocp}/${cap}</span></td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// VENDEDORES
+// ═══════════════════════════════════════════════════════
+function renderVendedores(clientes, revendedores) {
+  const hoy = hoyDMY();
+  const hoyTs = dmyToTs(hoy);
+  const vendMap = {};
+
+  clientes.forEach(c => {
+    const v = String(c.vendedor||'Sin vendedor').trim();
+    if (!vendMap[v]) vendMap[v] = { clientes: 0, servicios: 0, total: 0, vencidos: 0, hoy: 0 };
+    vendMap[v].clientes++;
+    const servicios = Array.isArray(c.servicios) ? c.servicios : [];
+    servicios.forEach(s => {
+      vendMap[v].servicios++;
+      vendMap[v].total += Number(s.precio||0);
+      const fts = dmyToTs(String(s.fechaRenovacion||''));
+      if (fts && fts < hoyTs) vendMap[v].vencidos++;
+      if (String(s.fechaRenovacion||'') === hoy) vendMap[v].hoy++;
+    });
+  });
+
+  const el = document.getElementById('vendor-grid');
+  const entries = Object.entries(vendMap).sort((a,b)=>b[1].total-a[1].total);
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty">Sin vendedores</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([v, d]) => `
+    <div class="vendor-card">
+      <div class="vendor-name">👤 ${v}</div>
+      <div class="vendor-stat"><span class="vs-label">Clientes</span><span class="vs-val" style="color:var(--accent)">${d.clientes}</span></div>
+      <div class="vendor-stat"><span class="vs-label">Servicios</span><span class="vs-val">${d.servicios}</span></div>
+      <div class="vendor-stat"><span class="vs-label">Total/mes</span><span class="vs-val" style="color:var(--green)">${fmtLps(d.total)}</span></div>
+      <div class="vendor-stat"><span class="vs-label">Vencidos</span><span class="vs-val" style="color:${d.vencidos?'var(--red)':'var(--green)'}">${d.vencidos}</span></div>
+      <div class="vendor-stat"><span class="vs-label">Renuevan hoy</span><span class="vs-val" style="color:var(--yellow)">${d.hoy}</span></div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// TODOS LOS CLIENTES
+// ═══════════════════════════════════════════════════════
+function renderAllClients(clientes) {
+  const hoyTs = dmyToTs(hoyDMY());
+  document.getElementById('all-clients-count').textContent = `${clientes.length} total`;
+
+  const sorted = [...clientes].sort((a,b) =>
+    String(a.vendedor||'').localeCompare(String(b.vendedor||''), 'es')
+  );
+
+  const tbody = document.getElementById('all-clients-tbody');
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin clientes</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = sorted.map(c => {
+    const servicios = Array.isArray(c.servicios) ? c.servicios : [];
+    const totalMes = servicios.reduce((a,s) => a+Number(s.precio||0), 0);
+    let estado = 'activo';
+    for (const s of servicios) {
+      const fts = dmyToTs(String(s.fechaRenovacion||''));
+      if (fts && fts < hoyTs) { estado = 'vencido'; break; }
+    }
+    const badgeEstado = estado === 'vencido'
+      ? '<span class="badge red">VENCIDO</span>'
+      : servicios.length === 0
+        ? '<span class="badge yellow">SIN SERV</span>'
+        : '<span class="badge green">ACTIVO</span>';
+
+    const plats = [...new Set(servicios.map(s=>platName(s.plataforma||'')))].slice(0,3).join(', ');
+
+    return `<tr>
+      <td style="font-weight:600">${c.nombrePerfil||'Sin nombre'}</td>
+      <td style="font-family:var(--mono);font-size:0.75rem">${c.telefono||'-'}</td>
+      <td><span class="badge blue">${c.vendedor||'-'}</span></td>
+      <td style="font-size:0.75rem;color:var(--muted)">${plats||'—'}</td>
+      <td style="font-family:var(--mono)">${fmtLps(totalMes)}</td>
+      <td>${badgeEstado}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+function initApp() {
+  document.getElementById('loader').classList.remove('hidden');
+  document.getElementById('app').classList.remove('visible');
+
+  loadAll().then(() => {
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('footer-project').textContent = PROJECT_ID;
+  }).catch(e => {
+    document.getElementById('loader').querySelector('.loader-text').textContent = '❌ Error: ' + e.message;
+  });
+
+  // Auto-refresh cada 5 minutos
+  setInterval(loadAll, 5 * 60 * 1000);
+}
+
+// ═══════════════════════════════════════════════════════
+// BOOTSTRAP
+// ═══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (!PROJECT_ID) {
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('config-overlay').classList.remove('hidden');
+  } else {
+    document.getElementById('config-overlay').classList.add('hidden');
+    initApp();
+  }
+});
+</script>
+</body>
+</html>
